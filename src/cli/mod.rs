@@ -86,7 +86,7 @@ pub fn parse_args(argv: &[&str]) -> Result<Command, CliError> {
         if argv.iter().any(|&a| a == "-version" || a == "--version") {
             return Ok(Command::Version);
         }
-        let opts = parse_run_config_flags(&argv)?;
+        let opts = parse_run_config_flags(argv)?;
         return Ok(Command::Run(opts));
     }
 
@@ -178,10 +178,10 @@ fn validate_run_format(format: Option<&str>) -> Result<(), CliError> {
 fn looks_like_config_source(arg: &str) -> bool {
     !arg.starts_with('-')
         && (arg.starts_with("http+unix://")
-        || arg.starts_with('@')
-        || arg.contains(":/")
-        || arg.ends_with(".json")
-        || Path::new(arg).exists())
+            || arg.starts_with('@')
+            || arg.contains(":/")
+            || arg.ends_with(".json")
+            || Path::new(arg).exists())
 }
 
 fn parse_api_command(args: &[&str]) -> Result<Command, CliError> {

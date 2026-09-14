@@ -981,7 +981,7 @@ pub async fn main_entry() -> std::io::Result<()> {
     }
 
     let _logging_guard = crate::logging::init_logging(&command)?;
-    dispatch(&raw_args[0], command).await
+    dispatch(raw_args[0], command).await
 }
 
 async fn dispatch(program: &str, command: Command) -> std::io::Result<()> {

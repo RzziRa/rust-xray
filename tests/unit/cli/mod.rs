@@ -2,7 +2,7 @@ use super::*;
 
 fn parse(argv: &[&str]) -> Result<Command, CliError> {
     let mut args = vec!["rw-core"];
-    args.extend(argv.iter().map(|s| *s));
+    args.extend(argv.iter());
     parse_args(&args)
 }
 
@@ -155,7 +155,7 @@ fn parse_api_stats_with_name_and_reset() {
         "inbound>>>statin>>>traffic>>>downlink",
         "-reset",
     ])
-        .unwrap();
+    .unwrap();
     assert_eq!(
         cmd,
         Command::Api(ApiCommand::Stats(StatsApiOptions {
