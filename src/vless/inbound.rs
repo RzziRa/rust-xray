@@ -111,7 +111,7 @@ where
         policy.handshake_timeout,
         read_vless_request_with_limit(stream, MAX_VLESS_HEADER_SIZE),
     )
-    .await
+        .await
     {
         Ok(result) => result,
         Err(_) => Err(std::io::Error::new(
@@ -430,7 +430,7 @@ where
     prepare_reality_vless_relay_with_hook(stream, auth_ctx, socket_meta, router, || async {
         Ok(())
     })
-    .await
+        .await
 }
 
 async fn prepare_reality_vless_relay_with_hook<S, F, Fut>(
@@ -446,7 +446,7 @@ async fn prepare_reality_vless_relay_with_hook<S, F, Fut>(
 where
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
     F: FnOnce() -> Fut,
-    Fut: Future<Output = std::io::Result<()>>,
+    Fut: Future<Output=std::io::Result<()>>,
 {
     let inbound = match read_vless_request_with_policy(&mut stream, auth_ctx.vless_policy()).await {
         Ok(VlessRequestRead::ClosedBeforeRequest) => {
@@ -470,7 +470,7 @@ where
         inbound,
         on_ready_to_respond,
     )
-    .await
+        .await
 }
 
 async fn prepare_vless_relay_with_router<S>(
@@ -492,7 +492,7 @@ where
         router,
         || async { Ok(()) },
     )
-    .await
+        .await
 }
 
 async fn prepare_vless_relay_with_hook<S, F, Fut>(
@@ -506,7 +506,7 @@ async fn prepare_vless_relay_with_hook<S, F, Fut>(
 where
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
     F: FnOnce() -> Fut,
-    Fut: Future<Output = std::io::Result<()>>,
+    Fut: Future<Output=std::io::Result<()>>,
 {
     prepare_vless_relay_with_hook_and_router(
         stream,
@@ -517,7 +517,7 @@ where
         router,
         on_ready_to_respond,
     )
-    .await
+        .await
 }
 
 async fn prepare_vless_relay_with_hook_and_router<S, F, Fut>(
@@ -532,7 +532,7 @@ async fn prepare_vless_relay_with_hook_and_router<S, F, Fut>(
 where
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
     F: FnOnce() -> Fut,
-    Fut: Future<Output = std::io::Result<()>>,
+    Fut: Future<Output=std::io::Result<()>>,
 {
     let mut stream = stream;
     let policy = auth_ctx.map(|ctx| ctx.vless_policy()).unwrap_or_default();
@@ -554,7 +554,7 @@ where
         inbound,
         on_ready_to_respond,
     )
-    .await
+        .await
 }
 
 async fn prepare_vless_relay_from_inbound<S, F, Fut>(
@@ -570,7 +570,7 @@ async fn prepare_vless_relay_from_inbound<S, F, Fut>(
 where
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
     F: FnOnce() -> Fut,
-    Fut: Future<Output = std::io::Result<()>>,
+    Fut: Future<Output=std::io::Result<()>>,
 {
     let vless_started = Instant::now();
     enum AuthenticatedUsers<'a> {
@@ -762,7 +762,7 @@ where
                         OutboundConnectRuntime::shared(),
                         NetworkKind::Udp,
                     )
-                    .await
+                        .await
                     {
                         Ok(crate::routing::RoutedOutbound::Udp { socket, target }) => {
                             udp_socket = Some(Arc::new(socket));
@@ -795,8 +795,8 @@ where
                 &inbound.request.destination,
                 OutboundConnectRuntime::shared(),
             )
-            .await
-            .map_err(|err| stage_error(RealityAcceptedStage::Vless, err))?;
+                .await
+                .map_err(|err| stage_error(RealityAcceptedStage::Vless, err))?;
             udp_socket = Some(Arc::new(socket));
             udp_target = Some(target);
         }
@@ -906,7 +906,7 @@ where
                     OutboundConnectRuntime::shared(),
                     NetworkKind::Tcp,
                 )
-                .await
+                    .await
                 {
                     Ok(crate::routing::RoutedOutbound::Tcp(stream)) => stream,
                     Ok(crate::routing::RoutedOutbound::Udp { .. }) => {
@@ -1106,7 +1106,7 @@ where
         stats,
         VlessUdpRelayOptions::from_env(),
     )
-    .await;
+        .await;
     finish_vless_udp_relay(
         VlessUdpRelayFinished {
             auth,
@@ -1152,7 +1152,7 @@ where
         stats,
         VlessUdpRelayOptions::from_env(),
     )
-    .await;
+        .await;
     finish_vless_udp_relay(
         VlessUdpRelayFinished {
             auth,
@@ -1179,6 +1179,7 @@ where
         source_ip,
         ..Default::default()
     };
+
     handle_vless_tcp_inbound_with_socket_meta(stream, users, stats_state, &socket_meta, router)
         .await
 }
@@ -1201,7 +1202,7 @@ where
         router,
         || async { Ok(()) },
     )
-    .await;
+        .await;
     let Some((prepared, stats)) = swallow_vless_closed_before_request(prepared_result)? else {
         return Ok(());
     };
@@ -1230,7 +1231,7 @@ where
                 None,
                 route_env,
             )
-            .await;
+                .await;
         }
         VlessRelayPrepared::Udp(prepared) => {
             return run_prepared_udp_relay(prepared, stats.as_ref()).await;
@@ -1260,7 +1261,7 @@ where
         VisionDirectCapability::blocked_by_vless_encryption(),
         stats.as_ref(),
     )
-    .await;
+        .await;
 
     finish_vless_tcp_relay(
         VlessTcpRelayFinished {
@@ -1310,7 +1311,7 @@ where
                 None,
                 route_env,
             )
-            .await;
+                .await;
         }
         VlessRelayPrepared::Udp(prepared) => {
             return run_prepared_udp_relay(prepared, stats.as_ref()).await;
@@ -1340,7 +1341,7 @@ where
         VisionDirectCapability::blocked_by_vless_encryption(),
         stats.as_ref(),
     )
-    .await;
+        .await;
 
     finish_vless_tcp_relay(
         VlessTcpRelayFinished {
@@ -1365,7 +1366,7 @@ pub async fn handle_vless_tcp_inbound_with_response_hook<S, F, Fut>(
 where
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
     F: FnOnce() -> Fut,
-    Fut: Future<Output = std::io::Result<()>>,
+    Fut: Future<Output=std::io::Result<()>>,
 {
     let socket_meta = RouteSocketMeta {
         source_ip,
@@ -1379,7 +1380,7 @@ where
         router,
         on_ready_to_respond,
     )
-    .await
+        .await
 }
 
 pub async fn handle_vless_tcp_inbound_with_socket_meta_and_response_hook<S, F, Fut>(
@@ -1393,7 +1394,7 @@ pub async fn handle_vless_tcp_inbound_with_socket_meta_and_response_hook<S, F, F
 where
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
     F: FnOnce() -> Fut,
-    Fut: Future<Output = std::io::Result<()>>,
+    Fut: Future<Output=std::io::Result<()>>,
 {
     let prepared_result = prepare_vless_relay_with_hook(
         stream,
@@ -1403,7 +1404,7 @@ where
         router,
         on_ready_to_respond,
     )
-    .await;
+        .await;
     let Some((prepared, stats)) = swallow_vless_closed_before_request(prepared_result)? else {
         return Ok(());
     };
@@ -1428,7 +1429,7 @@ where
                 None,
                 route_env,
             )
-            .await;
+                .await;
         }
         VlessRelayPrepared::Udp(prepared) => {
             return run_prepared_udp_relay(prepared, stats.as_ref()).await;
@@ -1457,7 +1458,7 @@ where
         VisionDirectCapability::blocked_by_vless_encryption(),
         stats.as_ref(),
     )
-    .await;
+        .await;
 
     finish_vless_tcp_relay(
         VlessTcpRelayFinished {
@@ -1507,7 +1508,7 @@ where
         inbound,
         || async { Ok(()) },
     )
-    .await
+        .await
 }
 
 pub async fn handle_reality_vless_tcp_inbound<S>(
@@ -1527,7 +1528,7 @@ where
         &RouteSocketMeta::default(),
         None,
     )
-    .await
+        .await
 }
 
 pub async fn handle_reality_vless_tcp_inbound_traced<S>(
@@ -1560,7 +1561,7 @@ where
                 socket_meta,
                 router,
             )
-            .await,
+                .await,
         )?
     };
     let Some((prepared, stats)) = prepared_result else {
@@ -1662,7 +1663,7 @@ where
         mux_trace,
         route_env,
     )
-    .await;
+        .await;
     if let Err(err) = result {
         if useless_record_overflow_limit(&err).is_some() {
             let _ = mux_stream.send_useless_overflow_fatal_alert().await;
@@ -1765,7 +1766,7 @@ where
             mux_trace,
             route_env,
         )
-        .await
+            .await
     } else {
         let mut prefixed = PrefixedStream::new(prepared.stream, prepared.initial_payload);
         handle_mux_cool_inbound_with_env(
@@ -1774,7 +1775,7 @@ where
             mux_trace,
             route_env,
         )
-        .await
+            .await
     };
 
     result.map_err(|err| stage_error(RealityAcceptedStage::Vless, err))?;

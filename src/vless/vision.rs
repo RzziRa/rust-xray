@@ -257,7 +257,7 @@ pub fn xtls_padding(
     if padding_len > 0 {
         let padding_start = out.len();
         out.resize(padding_start + padding_len, 0);
-        let _ = getrandom::getrandom(&mut out[padding_start..]);
+        let _ = getrandom::fill(&mut out[padding_start..]);
     }
 
     trace!(
@@ -499,7 +499,7 @@ fn is_complete_tls_application_records(data: &[u8]) -> bool {
 
 fn random_padding_len(content_len: usize, long_padding: bool, testseed: [u32; 4]) -> usize {
     let mut bytes = [0u8; 2];
-    let _ = getrandom::getrandom(&mut bytes);
+    let _ = getrandom::fill(&mut bytes);
     let random = u16::from_be_bytes(bytes) as usize;
     if content_len < testseed[0] as usize && long_padding {
         random
@@ -825,13 +825,13 @@ where
 }
 
 impl<S> crate::reality::tls13::Tls13OverflowAlertWriter
-    for VisionRelayWriter<crate::reality::tls13::RealityTls13ClientWriter<S>>
+for VisionRelayWriter<crate::reality::tls13::RealityTls13ClientWriter<S>>
 where
     S: AsyncWrite + Unpin,
 {
     fn send_useless_overflow_fatal_alert(
         &mut self,
-    ) -> impl std::future::Future<Output = std::io::Result<()>> {
+    ) -> impl std::future::Future<Output=std::io::Result<()>> {
         self.inner.send_useless_overflow_fatal_alert()
     }
 }

@@ -32,6 +32,8 @@ use crate::tls::{
     parse_server_hello_key_share, parse_tls_server_hello_handshake, TlsRecord,
     TlsRecordContentType, EXTENSION_KEY_SHARE, EXTENSION_SUPPORTED_VERSIONS, NAMED_GROUP_X25519,
 };
+
+use hmac::KeyInit;
 use ml_kem::ml_kem_768::MlKem768;
 use ml_kem::{Decapsulate, Kem, KeyExport};
 use x25519_dalek::{PublicKey, StaticSecret};
@@ -95,7 +97,7 @@ fn dest_handshake_from_server_hello_message(message: &[u8]) -> RealityDestHandsh
             raw,
         }],
     )
-    .expect("valid single-record dest handshake")
+        .expect("valid single-record dest handshake")
 }
 
 fn valid_observed_server_hello(cipher_suite: u16) -> RealityObservedServerHello {
@@ -225,7 +227,7 @@ fn new_works_with_observed_server_hello_cipher_suite_0x1301() {
         observed,
         ObservedTargetTls13ServerFlight::default(),
     )
-    .expect("valid state");
+        .expect("valid state");
 
     assert_eq!(state.suite.id, TLS_AES_128_GCM_SHA256);
     assert_eq!(state.suite.name, "TLS_AES_128_GCM_SHA256");
@@ -248,7 +250,7 @@ fn new_rejects_ccm_cipher_suite_with_explicit_message() {
         observed,
         ObservedTargetTls13ServerFlight::default(),
     )
-    .unwrap_err();
+        .unwrap_err();
 
     assert_eq!(err.kind(), ErrorKind::Unsupported);
     let message = err.to_string();
@@ -265,7 +267,7 @@ fn debug_does_not_include_auth_key_or_raw_handshake_bytes() {
         observed.clone(),
         ObservedTargetTls13ServerFlight::default(),
     )
-    .unwrap();
+        .unwrap();
     let debug = format!("{state:?}");
 
     assert!(!debug.contains("auth_key"));
@@ -285,7 +287,7 @@ fn prepare_server_hello_builds_handshake_message_and_stores_state() {
         observed,
         ObservedTargetTls13ServerFlight::default(),
     )
-    .unwrap();
+        .unwrap();
     let client_key: [u8; 32] = core::array::from_fn(|i| 0x44 + i as u8);
     let client_hello = client_hello_with_x25519_keyshare(client_key.to_vec(), SessionId::empty());
 
@@ -310,7 +312,7 @@ fn prepare_server_hello_target_x25519_client_x25519_produces_x25519_server_share
         observed,
         ObservedTargetTls13ServerFlight::default(),
     )
-    .unwrap();
+        .unwrap();
     let client_key: [u8; 32] = core::array::from_fn(|i| 0x44 + i as u8);
     let client_hello = client_hello_with_x25519_keyshare(client_key.to_vec(), SessionId::empty());
 
@@ -335,7 +337,7 @@ fn prepare_server_hello_target_hybrid_client_hybrid_produces_hybrid_server_share
         observed,
         ObservedTargetTls13ServerFlight::default(),
     )
-    .unwrap();
+        .unwrap();
     let (client_hybrid, _dk, _client_x25519_secret) = build_valid_client_hybrid_share();
     let client_hello = client_hello_with_hybrid_keyshare(client_hybrid);
 
@@ -366,7 +368,7 @@ fn prepare_server_hello_target_hybrid_with_dual_client_keyshares_uses_hybrid_not
         observed,
         ObservedTargetTls13ServerFlight::default(),
     )
-    .unwrap();
+        .unwrap();
 
     let hybrid_tail: [u8; 32] = [0xAA; 32];
     let standalone: [u8; 32] = core::array::from_fn(|i| 0x44 + i as u8);
@@ -397,7 +399,7 @@ fn prepare_server_hello_target_x25519_with_dual_client_keyshares_uses_x25519() {
         observed,
         ObservedTargetTls13ServerFlight::default(),
     )
-    .unwrap();
+        .unwrap();
 
     let hybrid_tail: [u8; 32] = [0xAA; 32];
     let standalone: [u8; 32] = core::array::from_fn(|i| 0x44 + i as u8);
@@ -426,7 +428,7 @@ fn prepare_server_hello_target_hybrid_client_standalone_only_errors() {
         observed,
         ObservedTargetTls13ServerFlight::default(),
     )
-    .unwrap();
+        .unwrap();
     let standalone: [u8; 32] = core::array::from_fn(|i| 0x44 + i as u8);
     let client_hello = client_hello_with_x25519_keyshare(standalone.to_vec(), SessionId::empty());
 
@@ -445,7 +447,7 @@ fn prepare_server_hello_requires_client_x25519_key_share() {
         observed,
         ObservedTargetTls13ServerFlight::default(),
     )
-    .unwrap();
+        .unwrap();
 
     let err = state
         .prepare_server_hello(&client_hello_without_keyshare())
@@ -466,7 +468,7 @@ fn prepare_server_hello_target_x25519_rejects_hybrid_only_client_key_share() {
         observed,
         ObservedTargetTls13ServerFlight::default(),
     )
-    .unwrap();
+        .unwrap();
 
     let hybrid_tail: [u8; 32] = core::array::from_fn(|i| i as u8);
     let client_hello =
@@ -490,7 +492,7 @@ fn prepare_server_hello_target_hybrid_rejects_malformed_client_hybrid_len_1215()
         observed,
         ObservedTargetTls13ServerFlight::default(),
     )
-    .unwrap();
+        .unwrap();
     let mut client_hybrid = build_x25519mlkem768_client_key_share([0xBB; 32]);
     client_hybrid.pop();
     let client_hello = client_hello_with_hybrid_keyshare(client_hybrid);
@@ -512,7 +514,7 @@ fn prepare_server_hello_target_hybrid_rejects_invalid_mlkem_encapsulation_key() 
         observed,
         ObservedTargetTls13ServerFlight::default(),
     )
-    .unwrap();
+        .unwrap();
     let mut client_hybrid = build_x25519mlkem768_client_key_share([0xCC; 32]);
     client_hybrid[..MLKEM768_ENCAPSULATION_KEY_LEN].fill(0xFF);
     let client_hello = client_hello_with_hybrid_keyshare(client_hybrid);
@@ -531,7 +533,7 @@ fn prepare_server_hello_target_x25519_rejects_malformed_standalone_length() {
         observed,
         ObservedTargetTls13ServerFlight::default(),
     )
-    .unwrap();
+        .unwrap();
     let client_hello = client_hello_with_x25519_keyshare(vec![0x44; 31], SessionId::empty());
 
     let err = state.prepare_server_hello(&client_hello).unwrap_err();
@@ -551,7 +553,7 @@ fn prepare_server_hello_target_hybrid_interop_crypto_matches_client() {
         observed,
         ObservedTargetTls13ServerFlight::default(),
     )
-    .unwrap();
+        .unwrap();
     let (client_hybrid, client_dk, client_x25519_secret) = build_valid_client_hybrid_share();
     let client_hello = client_hello_with_hybrid_keyshare(client_hybrid);
 
@@ -590,7 +592,7 @@ fn prepare_server_hello_target_hybrid_server_hello_wire_shape() {
         observed,
         ObservedTargetTls13ServerFlight::default(),
     )
-    .unwrap();
+        .unwrap();
     let (client_hybrid, _dk, _client_x25519_secret) = build_valid_client_hybrid_share();
     let client_hello = client_hello_with_hybrid_keyshare(client_hybrid);
 
@@ -605,7 +607,7 @@ fn prepare_server_hello_target_hybrid_server_hello_wire_shape() {
             .get_extension(EXTENSION_KEY_SHARE)
             .expect("key_share extension"),
     )
-    .expect("valid key_share");
+        .expect("valid key_share");
     assert_eq!(key_share.group, NAMED_GROUP_X25519MLKEM768);
     assert_eq!(
         key_share.key_exchange.len(),
@@ -626,7 +628,7 @@ fn prepare_server_hello_target_x25519_server_hello_wire_shape() {
         observed,
         ObservedTargetTls13ServerFlight::default(),
     )
-    .unwrap();
+        .unwrap();
     let client_key: [u8; 32] = core::array::from_fn(|i| 0x44 + i as u8);
     let client_hello = client_hello_with_x25519_keyshare(client_key.to_vec(), SessionId::empty());
 
@@ -649,7 +651,7 @@ fn prepare_server_hello_does_not_reuse_target_hybrid_key_exchange_bytes() {
         observed,
         ObservedTargetTls13ServerFlight::default(),
     )
-    .unwrap();
+        .unwrap();
     let (client_hybrid, _dk, _client_x25519_secret) = build_valid_client_hybrid_share();
     let client_hello = client_hello_with_hybrid_keyshare(client_hybrid);
 
@@ -672,7 +674,7 @@ fn prepare_server_hello_target_hybrid_derives_64_byte_handshake_secret() {
         observed,
         ObservedTargetTls13ServerFlight::default(),
     )
-    .unwrap();
+        .unwrap();
     let (client_hybrid, _dk, _client_x25519_secret) = build_valid_client_hybrid_share();
     let client_hello = client_hello_with_hybrid_keyshare(client_hybrid);
 
@@ -706,7 +708,7 @@ fn prepare_server_hello_message_parses_as_tls13_server_hello() {
         observed,
         ObservedTargetTls13ServerFlight::default(),
     )
-    .unwrap();
+        .unwrap();
     let client_key: [u8; 32] = core::array::from_fn(|i| i as u8);
     let client_hello = client_hello_with_x25519_keyshare(client_key.to_vec(), SessionId::empty());
 
@@ -734,7 +736,7 @@ fn state_with_prepared_server_hello() -> RealityTls13ServerState {
         observed,
         ObservedTargetTls13ServerFlight::default(),
     )
-    .unwrap();
+        .unwrap();
     let client_key: [u8; 32] = core::array::from_fn(|i| i as u8);
     let client_hello = client_hello_with_x25519_keyshare(client_key.to_vec(), SessionId::empty());
     state
@@ -750,7 +752,7 @@ fn state_with_fixed_server_hello_message(server_hello_message: Vec<u8>) -> Reali
         observed,
         ObservedTargetTls13ServerFlight::default(),
     )
-    .unwrap();
+        .unwrap();
     state.server_hello_message = Some(server_hello_message);
     state
 }
@@ -771,10 +773,10 @@ fn update_transcript_client_server_hello_changes_digest() {
         state.transcript.len(),
         client_hello_message.len()
             + state
-                .server_hello_message
-                .as_ref()
-                .expect("server hello stored")
-                .len()
+            .server_hello_message
+            .as_ref()
+            .expect("server hello stored")
+            .len()
     );
 }
 
@@ -815,7 +817,7 @@ fn update_transcript_client_server_hello_requires_server_hello_message() {
         observed,
         ObservedTargetTls13ServerFlight::default(),
     )
-    .unwrap();
+        .unwrap();
 
     let err = state
         .update_transcript_client_server_hello(&sample_client_hello_handshake_message())
@@ -857,7 +859,7 @@ fn derive_handshake_secrets_requires_server_key_share() {
         observed,
         ObservedTargetTls13ServerFlight::default(),
     )
-    .unwrap();
+        .unwrap();
 
     let err = state.derive_handshake_secrets(&[0x01; 32]).unwrap_err();
 

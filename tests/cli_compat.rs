@@ -55,7 +55,7 @@ fn integration_version_head_pipe_does_not_panic() {
 #[test]
 fn parse_remnawave_direct_cli_invocation() {
     let uri = "http+unix:///run/remnawave-internal.sock/internal/get-config?token=secret";
-    let cmd = parse_args(["rw-core", "-config", uri, "-format", "json"]).unwrap();
+    let cmd = parse_args(&["rw-core", "-config", uri, "-format", "json"]).unwrap();
     assert_eq!(
         cmd,
         CliCommand::Run(rust_xray::cli::RunOptions {
@@ -92,8 +92,8 @@ fn integration_api_stats_requires_name() {
 
 #[test]
 fn parse_run_and_shorthand_config_equivalent() {
-    let run = parse_args(["xray", "run", "-config", "/tmp/a.json"]).unwrap();
-    let shorthand = parse_args(["xray", "-config", "/tmp/a.json"]).unwrap();
+    let run = parse_args(&["xray", "run", "-config", "/tmp/a.json"]).unwrap();
+    let shorthand = parse_args(&["xray", "-config", "/tmp/a.json"]).unwrap();
     assert_eq!(run, shorthand);
 }
 
@@ -112,7 +112,7 @@ fn parse_http_unix_config_uri_splits_socket_and_path() {
 
 #[test]
 fn parse_api_statsquery_server_flag() {
-    let cmd = parse_args(["xray", "api", "statsquery", "--server=127.0.0.1:10085"]).unwrap();
+    let cmd = parse_args(&["xray", "api", "statsquery", "--server=127.0.0.1:10085"]).unwrap();
     assert_eq!(
         cmd,
         CliCommand::Api(ApiCommand::StatsQuery(StatsApiOptions {
@@ -127,7 +127,7 @@ fn parse_api_statsquery_server_flag() {
 
 #[test]
 fn parse_api_statsquery_xray_style_server_flag() {
-    let cmd = parse_args(["xray", "api", "statsquery", "-server=127.0.0.1:10084"]).unwrap();
+    let cmd = parse_args(&["xray", "api", "statsquery", "-server=127.0.0.1:10084"]).unwrap();
     assert_eq!(
         cmd,
         CliCommand::Api(ApiCommand::StatsQuery(StatsApiOptions {

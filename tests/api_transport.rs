@@ -3,7 +3,8 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use rcgen::{
-    BasicConstraints, CertificateParams, DnType, ExtendedKeyUsagePurpose, IsCa, KeyPair, SanType,
+    BasicConstraints, CertificateParams, DnType, ExtendedKeyUsagePurpose, IsCa, Issuer, KeyPair,
+    SanType,
 };
 use rust_xray::api::proto::app::stats::command::stats_service_client::StatsServiceClient;
 use rust_xray::api::proto::app::stats::command::SysStatsRequest;
@@ -43,16 +44,20 @@ fn generate_remnawave_test_certs() -> RemnaTestCerts {
     server_params
         .subject_alt_names
         .push(SanType::IpAddress(IpAddr::V4(Ipv4Addr::LOCALHOST)));
+
+    let ca_issuer = Issuer::from_params(&ca_params, &ca_key);
+
     let server_cert = server_params
-        .signed_by(&server_key, &ca_cert, &ca_key)
+        .signed_by(&server_key, &ca_issuer)
         .expect("server cert");
 
     let client_key = KeyPair::generate().expect("client key");
     let mut client_params = CertificateParams::new(vec!["internal.remnawave.local".to_string()])
         .expect("client params");
     client_params.extended_key_usages = vec![ExtendedKeyUsagePurpose::ClientAuth];
+    let ca_issuer = Issuer::from_params(&ca_params, &ca_key);
     let client_cert = client_params
-        .signed_by(&client_key, &ca_cert, &ca_key)
+        .signed_by(&client_key, &ca_issuer)
         .expect("client cert");
 
     RemnaTestCerts {

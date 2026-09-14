@@ -8,6 +8,7 @@ use tracing::{debug, error, info, warn};
 use crate::config::{
     api_listen_kind, bind_api_listen, ApiInbound, ApiListenKind, BoundApiListener,
 };
+use crate::eprintln_bootstrap;
 use crate::routing::{route_context_from_tunnel, RuntimeRouter};
 
 /// Background accept loop for one tunnel inbound.
@@ -79,9 +80,9 @@ pub async fn start_tunnel_inbound(
         protocol = %inbound.protocol,
         "tunnel inbound listener bound"
     );
-    crate::startup_log::eprintln_bootstrap(format!(
+    eprintln_bootstrap!(
         "tunnel inbound started tag={inbound_tag} listen={bound_label}"
-    ));
+    );
 
     let task_tag = inbound_tag.clone();
     let task = tokio::spawn(async move {

@@ -1,9 +1,10 @@
+use std::borrow::Cow;
 use std::path::Path;
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
 
-use crate::startup_log;
+use crate::eprintln_bootstrap;
 
 use super::raw::XrayConfig;
 use super::unix_http::{fetch_unix_http_config, is_canonical_unix_http_config_source};
@@ -43,11 +44,11 @@ pub fn load_xray_config_from_file(path: impl AsRef<Path>) -> std::io::Result<Xra
     Ok(config)
 }
 
-pub fn redact_config_source(source: &str) -> String {
+pub fn redact_config_source(source: &str) -> Cow<'_, str> {
     if let Some((before_query, _)) = source.split_once('?') {
-        return format!("{before_query}?<redacted>");
+        return Cow::Owned(format!("{before_query}?<redacted>"));
     }
-    source.to_string()
+    Cow::Borrowed(source)
 }
 
 /// Config source kind for startup diagnostics.
@@ -88,16 +89,12 @@ pub fn format_redacted_run_command(
     config_source: &str,
     format: Option<&str>,
 ) -> String {
-    let mut parts = vec![
-        program.to_string(),
-        "-config".to_string(),
-        redact_config_source(config_source),
-    ];
-    if let Some(format) = format {
-        parts.push("-format".to_string());
-        parts.push(format.to_string());
+    let cfg = config_source_kind(config_source);
+    if let Some(fmt) = format {
+        format!("{program} -config {cfg} -format {fmt}")
+    } else {
+        format!("{program} -config {cfg}")
     }
-    parts.join(" ")
 }
 pub async fn load_xray_config_from_source(source: &str) -> std::io::Result<XrayConfig> {
     let contents = if source.starts_with(HTTP_UNIX_SCHEME) {
@@ -131,11 +128,11 @@ pub async fn load_xray_config_from_source(source: &str) -> std::io::Result<XrayC
 
 async fn fetch_http_unix_config(source: &str) -> std::io::Result<String> {
     let (socket_path, request_target) = parse_http_unix_source(source)?;
-    startup_log::eprintln_bootstrap(format!(
+    eprintln_bootstrap!(
         "http+unix config fetch: socket={} path={}",
         socket_path,
         redact_config_source(request_target)
-    ));
+    );
     let mut stream = UnixStream::connect(socket_path).await.map_err(|e| {
         std::io::Error::new(
             e.kind(),

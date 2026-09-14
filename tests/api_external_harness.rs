@@ -42,10 +42,7 @@ impl ExternalBinaries {
     pub fn resolve() -> Option<Self> {
         let xray = resolve_binary(
             "XRAY_UPSTREAM_BIN",
-            &[
-                "/tmp/xray-upstream/xray",
-                &format!("{}/go/bin/xray", std::env::var("HOME").unwrap_or_default()),
-            ],
+            &["/tmp/xray-upstream/xray", env!("CARGO_BIN_EXE_rust-xray")],
         )?;
         let grpcurl = resolve_binary(
             "GRPCURL_BIN",

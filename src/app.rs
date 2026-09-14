@@ -4,8 +4,8 @@ use std::sync::{Arc, RwLock};
 use std::task::{Context, Poll};
 use std::time::Instant;
 
-use crate::api;
 use crate::cli::{self, Command, RunOptions};
+use crate::{api, eprintln_bootstrap};
 use tokio::io::{AsyncRead, AsyncReadExt, ReadBuf};
 use tokio::net::TcpStream;
 use tracing::{debug, error, info, trace, warn};
@@ -785,6 +785,7 @@ fn merged_normalized_reality_inbounds(
         Vec<String>,
         BTreeMap<String, Vec<VlessClient>>,
     )> = Vec::new();
+
     for inbound in normalized
         .inbounds
         .iter()
@@ -952,24 +953,22 @@ async fn start_api_tunnel_inbounds(
 }
 
 fn stage_error(stage: &str, err: std::io::Error) -> std::io::Error {
-    crate::startup_log::eprintln_stage(stage, &err);
+    eprintln_bootstrap!("{stage}: {err}");
     std::io::Error::new(err.kind(), format!("{stage}: {err}"))
 }
 
 pub async fn main_entry() -> std::io::Result<()> {
-    let raw_args: Vec<String> = std::env::args().collect();
+    let raw_args = std::env::args().collect::<Vec<_>>();
+    let raw_args = raw_args.iter().map(|s| s.as_str()).collect::<Vec<_>>();
 
-    let command = match cli::parse_args(raw_args.iter().map(|s| s.as_str())) {
+    let command = match cli::parse_args(&raw_args) {
         Ok(command) => command,
         Err(err) => {
-            if !matches!(raw_args.get(1).map(String::as_str), Some("version")) {
-                crate::startup_log::eprintln_bootstrap("main_entry start");
-                crate::startup_log::eprintln_bootstrap(format!(
-                    "argv: {}",
-                    crate::startup_log::redact_argv(&raw_args)
-                ));
+            if raw_args.get(1).is_some_and(|&s| s != "version") {
+                eprintln_bootstrap!("main_entry start");
+                eprintln_bootstrap!("argv: {}", crate::startup_log::redact_argv(&raw_args));
             }
-            crate::startup_log::eprintln_fatal_message(err.to_string());
+            eprintln_bootstrap!("fatal: {err:?}");
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
                 err.to_string(),
@@ -982,10 +981,10 @@ pub async fn main_entry() -> std::io::Result<()> {
     }
 
     let _logging_guard = crate::logging::init_logging(&command)?;
-    dispatch(command).await
+    dispatch(&raw_args[0], command).await
 }
 
-async fn dispatch(command: Command) -> std::io::Result<()> {
+async fn dispatch(program: &str, command: Command) -> std::io::Result<()> {
     match command {
         Command::Version => {
             cli::print_version();
@@ -994,7 +993,7 @@ async fn dispatch(command: Command) -> std::io::Result<()> {
         Command::Api(api) => api::execute(api).await.map_err(|err| {
             stage_error("api command failed", std::io::Error::other(err.to_string()))
         }),
-        Command::Run(opts) => run_server(opts).await,
+        Command::Run(opts) => run_server(program, opts).await,
     }
 }
 
@@ -1025,24 +1024,25 @@ async fn start_xray_api_server(
     };
 
     if let Some(label) = startup.bound_label.as_deref() {
-        crate::startup_log::eprintln_api_listening(label, startup.transport.as_log_label());
+        eprintln_bootstrap!(
+            "Xray API listening on {label} {}",
+            startup.transport.as_log_label()
+        );
     }
 
     Ok(Some(startup.task))
 }
 
-async fn run_server(opts: RunOptions) -> std::io::Result<()> {
-    let program = std::env::args()
-        .next()
-        .unwrap_or_else(|| "rw-core".to_string());
+async fn run_server(program: &str, opts: RunOptions) -> std::io::Result<()> {
     let config_source = opts.config.clone();
     let source_kind = config_source_kind(&config_source);
 
     info!(
-        command_line = %format_redacted_run_command(&program, &config_source, opts.format.as_deref()),
+        command_line = %format_redacted_run_command(program, &config_source, opts.format.as_deref()),
         config_source_kind = source_kind,
         "rust-xray starting"
     );
+
     if let Some(format) = opts.format.as_deref() {
         info!(format = %format, "Xray config format");
     }
@@ -1055,7 +1055,7 @@ async fn run_server(opts: RunOptions) -> std::io::Result<()> {
     let xray = load_xray_config_from_source(&config_source)
         .await
         .map_err(|err| stage_error("failed to load config source", err))?;
-    crate::startup_log::eprintln_bootstrap("config load success");
+    eprintln_bootstrap!("config load success");
     if let Some(controller) = crate::logging::RuntimeLoggerController::global() {
         controller.apply_runtime_config(xray.log.as_ref());
         controller.restart().map_err(|err| {
@@ -1100,12 +1100,13 @@ async fn run_server(opts: RunOptions) -> std::io::Result<()> {
     if let Some(api) = xray.api.as_ref() {
         info!(api_tag = %api.tag, api_services = ?api.services, "api block present");
         if let Ok(Some((listen, source, tag))) = resolve_api_listen(&xray) {
-            crate::startup_log::eprintln_api_listen_resolved(
-                &listen,
+            eprintln_bootstrap!(
+                "API listen resolved: {listen} source={} inbound_tag={} api_tag={}",
                 source.as_log_label(),
-                tag.as_deref(),
-                api.tag.as_str(),
+                tag.as_deref().unwrap_or("-"),
+                api.tag.as_str()
             );
+
             info!(
                 api_listen = %listen,
                 api_listen_source = source.as_log_label(),
@@ -1165,10 +1166,10 @@ async fn run_server(opts: RunOptions) -> std::io::Result<()> {
             ),
         ));
     }
-    crate::startup_log::eprintln_bootstrap(format!(
+    eprintln_bootstrap!(
         "REALITY runtime loaded OK listener_count={}",
         server_config.inbounds.len()
-    ));
+    );
     for inbound in &server_config.inbounds {
         info!(
             listen = %inbound.inbound.listen_addr,
@@ -1275,10 +1276,10 @@ async fn run_server(opts: RunOptions) -> std::io::Result<()> {
                 )
             })?;
 
-        crate::startup_log::eprintln_bootstrap(format!(
+        eprintln_bootstrap!(
             "REALITY listener started addr={} tag={inbound_tag}",
             inbound.inbound.listen_addr
-        ));
+        );
         info!(
             addr = %inbound.inbound.listen_addr,
             inbound_tag = %inbound_tag,
@@ -1292,22 +1293,22 @@ async fn run_server(opts: RunOptions) -> std::io::Result<()> {
             api_result = &mut api_task => {
                 match api_result {
                     Ok(Ok(())) => {
-                        crate::startup_log::eprintln_bootstrap(
+                        eprintln_bootstrap!(
                             "critical task exited: api server returned",
                         );
                         error!("Xray API server task exited unexpectedly");
                     }
                     Ok(Err(err)) => {
-                        crate::startup_log::eprintln_bootstrap(format!(
+                        eprintln_bootstrap!(
                             "critical task exited: api server error: {err}"
-                        ));
+                        );
                         error!(error = %err, "Xray API server task failed");
                         return Err(err);
                     }
                     Err(join_err) => {
-                        crate::startup_log::eprintln_bootstrap(format!(
+                        eprintln_bootstrap!(
                             "critical task exited: api server join error: {join_err}"
-                        ));
+                        );
                         error!(error = %join_err, "Xray API server task join failed");
                         return Err(std::io::Error::other(join_err));
                     }
@@ -1315,7 +1316,7 @@ async fn run_server(opts: RunOptions) -> std::io::Result<()> {
             }
             _ = wait_shutdown_signal() => {
                 info!("rust-xray shutting down after signal");
-                crate::startup_log::eprintln_bootstrap("rust-xray shutting down after signal");
+                eprintln_bootstrap!("rust-xray shutting down after signal");
                 api_task.abort();
                 for handle in tunnel_handles {
                     handle.abort();
@@ -1325,13 +1326,13 @@ async fn run_server(opts: RunOptions) -> std::io::Result<()> {
     } else {
         wait_shutdown_signal().await;
         info!("rust-xray shutting down after signal");
-        crate::startup_log::eprintln_bootstrap("rust-xray shutting down after signal");
+        eprintln_bootstrap!("rust-xray shutting down after signal");
         for handle in tunnel_handles {
             handle.abort();
         }
     }
 
-    crate::startup_log::eprintln_bootstrap("run_server returning");
+    eprintln_bootstrap!("run_server returning");
     info!("rust-xray run_server exiting");
     Ok(())
 }
@@ -1353,7 +1354,7 @@ async fn wait_shutdown_signal() {
         let _ = tokio::signal::ctrl_c().await;
     }
     info!("rust-xray received shutdown signal");
-    crate::startup_log::eprintln_bootstrap("rust-xray received shutdown signal");
+    eprintln_bootstrap!("rust-xray received shutdown signal");
 }
 
 #[cfg(test)]

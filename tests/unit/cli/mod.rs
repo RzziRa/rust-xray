@@ -1,9 +1,9 @@
 use super::*;
 
 fn parse(argv: &[&str]) -> Result<Command, CliError> {
-    let mut args = vec!["rw-core".to_string()];
-    args.extend(argv.iter().map(|s| (*s).to_string()));
-    parse_args(args)
+    let mut args = vec!["rw-core"];
+    args.extend(argv.iter().map(|s| *s));
+    parse_args(&args)
 }
 
 #[test]
@@ -155,7 +155,7 @@ fn parse_api_stats_with_name_and_reset() {
         "inbound>>>statin>>>traffic>>>downlink",
         "-reset",
     ])
-    .unwrap();
+        .unwrap();
     assert_eq!(
         cmd,
         Command::Api(ApiCommand::Stats(StatsApiOptions {
@@ -182,6 +182,6 @@ fn parse_legacy_config_path() {
 
 #[test]
 fn parse_default_config_when_no_args() {
-    let cmd = parse_args(["xray"]).unwrap();
+    let cmd = parse_args(&["xray"]).unwrap();
     assert_eq!(cmd, Command::Run(default_run_options()));
 }

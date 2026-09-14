@@ -6,12 +6,10 @@
 use std::fmt;
 use std::io::{Error, ErrorKind};
 
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use sha2::Sha512;
 
 const ED25519_SIGNATURE_LEN: usize = 64;
-
-type HmacSha512 = Hmac<Sha512>;
 
 pub enum RealityCertificatePatchMode<'a> {
     HmacOnly,
@@ -148,7 +146,7 @@ pub fn patch_reality_certificate_der(
         ));
     }
 
-    let mut mac = HmacSha512::new_from_slice(auth_key).map_err(|err| {
+    let mut mac = Hmac::<Sha512>::new_from_slice(auth_key).map_err(|err| {
         Error::new(
             ErrorKind::InvalidInput,
             format!("REALITY certificate HMAC key rejected: {err}"),

@@ -6,12 +6,11 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock, RwLock};
 
+use crate::cli::Command;
+use crate::config::LogConfig;
 use tracing::debug;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::EnvFilter;
-
-use crate::cli::Command;
-use crate::config::LogConfig;
 
 const DEFAULT_BUFFERED_LINES: usize = 65_536;
 
@@ -28,6 +27,14 @@ static LOGGING_INIT_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
 /// Keeps the `tracing-appender` worker thread alive until process exit.
 pub struct LoggingGuard {
     _worker_guard: Option<WorkerGuard>,
+}
+
+impl LoggingGuard {
+    pub(crate) fn empty() -> LoggingGuard {
+        LoggingGuard {
+            _worker_guard: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -337,18 +344,6 @@ pub fn parse_log_runtime_config(log: Option<&LogConfig>) -> LoggerRuntimeConfig 
         ..LoggerRuntimeConfig::default()
     };
 
-    if let Some(access) = log.access.as_deref() {
-        config.access = parse_output_field(access);
-    } else if let Some(access) = log.extra.get("access").and_then(|value| value.as_str()) {
-        config.access = parse_output_field(access);
-    }
-
-    if let Some(error) = log.error.as_deref() {
-        config.error = parse_output_field(error);
-    } else if let Some(error) = log.extra.get("error").and_then(|value| value.as_str()) {
-        config.error = parse_output_field(error);
-    }
-
     if log
         .loglevel
         .as_deref()
@@ -356,6 +351,24 @@ pub fn parse_log_runtime_config(log: Option<&LogConfig>) -> LoggerRuntimeConfig 
     {
         config.error = LogOutputSpec::none();
         config.access = LogOutputSpec::none();
+
+        return config;
+    }
+
+    if let Some(access) = log
+        .access
+        .as_deref()
+        .or(log.extra.get("access").and_then(|value| value.as_str()))
+    {
+        config.access = parse_output_field(access);
+    }
+
+    if let Some(error) = log
+        .error
+        .as_deref()
+        .or(log.extra.get("error").and_then(|value| value.as_str()))
+    {
+        config.error = parse_output_field(error);
     }
 
     config
@@ -372,10 +385,11 @@ fn parse_output_field(raw: &str) -> LogOutputSpec {
     }
 }
 
-pub fn default_env_filter(command: &Command) -> &'static str {
-    let _ = command;
-    DEFAULT_TRACE_FILTER
-}
+// ASK: wtf?
+// pub fn default_env_filter(command: &Command) -> &'static str {
+//     let _ = command;
+//     DEFAULT_TRACE_FILTER
+// }
 
 pub fn init_logging(command: &Command) -> io::Result<LoggingGuard> {
     init_logging_with_config(command, LoggerRuntimeConfig::default())
@@ -385,6 +399,10 @@ pub fn init_logging_with_config(
     command: &Command,
     runtime_config: LoggerRuntimeConfig,
 ) -> io::Result<LoggingGuard> {
+    if let Command::Version = command {
+        return Ok(LoggingGuard::empty());
+    }
+
     let init_lock = LOGGING_INIT_LOCK.get_or_init(|| Mutex::new(()));
     let _init_guard = init_lock.lock().expect("logging init lock poisoned");
 
@@ -399,9 +417,7 @@ pub fn init_logging_with_config(
         controller
             .restart()
             .map_err(|err| io::Error::other(err.to_string()))?;
-        return Ok(LoggingGuard {
-            _worker_guard: None,
-        });
+        return Ok(LoggingGuard::empty());
     }
 
     let controller = RuntimeLoggerController::new(runtime_config)?;
@@ -410,9 +426,8 @@ pub fn init_logging_with_config(
         outputs.error.clone()
     };
 
-    let default_filter = default_env_filter(command);
     let env_filter =
-        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(default_filter));
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(DEFAULT_TRACE_FILTER));
 
     let buffered_lines = parse_log_buffered_lines_env();
     let backpressure = parse_log_backpressure_env();
@@ -433,7 +448,7 @@ pub fn init_logging_with_config(
 
     debug!(
         writer = "reloadable",
-        default_filter,
+        DEFAULT_TRACE_FILTER,
         rust_log_override = std::env::var("RUST_LOG").is_ok(),
         buffered_lines_limit = buffered_lines,
         backpressure,
@@ -462,10 +477,10 @@ pub fn parse_buffered_lines(value: Option<&str>) -> usize {
 }
 
 pub fn parse_backpressure(value: Option<&str>) -> bool {
-    const TRUE: &[&str] = &["1", "true", "yes", "on"];
+    const TRUE: [&str; 4] = ["1", "true", "yes", "on"];
     matches!(
         value.map(str::trim).filter(|s| !s.is_empty()),
-        Some(raw) if TRUE.iter().any(|t| raw.eq_ignore_ascii_case(t))
+        Some(raw) if TRUE.iter().any(|t| raw.trim().eq_ignore_ascii_case(t))
     )
 }
 

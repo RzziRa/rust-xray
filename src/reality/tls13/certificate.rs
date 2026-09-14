@@ -203,7 +203,7 @@ pub fn generate_reality_ephemeral_ed25519_certificate_with_layout(
 
     let key_pair = KeyPair::generate_for(&PKCS_ED25519)
         .map_err(|e| rcgen_error("Ed25519 key generation failed", e))?;
-    let public_key_der = key_pair.public_key_der();
+    let public_key_der = key_pair.public_key_raw().to_vec();
     let signing_key = SigningKey::from_pkcs8_der(&key_pair.serialize_der()).map_err(|e| {
         Error::new(
             ErrorKind::InvalidData,

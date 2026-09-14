@@ -1,4 +1,4 @@
-use hmac::{Hmac, Mac};
+use hmac::{Hmac, KeyInit, Mac};
 use rust_xray::reality::build_reality_mldsa65_message;
 use sha2::Sha512;
 

@@ -5,6 +5,8 @@ use crate::reality::tls13::{
     generate_reality_ephemeral_ed25519_certificate_with_layout, RealityEphemeralCertificateLayout,
 };
 
+use hmac::KeyInit;
+
 const TEST_PRIVATE_KEY: &str = "CMZoLYnNxeaUoLn7LwK4RzBIdpzBXI5TOIlZ3tEfOn4";
 const VALID_SEED_B64: &str = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8";
 
@@ -92,7 +94,7 @@ fn valid_live_patch_context_passes_validation() {
 }
 
 fn expected_reality_cert_hmac(auth_key: &[u8; 32], public_key: &[u8; 32]) -> [u8; 64] {
-    let mut mac = HmacSha512::new_from_slice(auth_key).expect("valid HMAC key");
+    let mut mac = Hmac::<Sha512>::new_from_slice(auth_key).expect("valid HMAC key");
     mac.update(public_key);
     mac.finalize().into_bytes().into()
 }
@@ -161,7 +163,7 @@ fn patch_reality_certificate_der_with_mode_hmac_only_matches_legacy_patch() {
         auth_key: &auth_key,
         mode: RealityCertificatePatchMode::HmacOnly,
     })
-    .expect("mode patch");
+        .expect("mode patch");
 
     assert_eq!(mode_cert, legacy_cert);
 }
@@ -255,7 +257,7 @@ fn hmac_plus_mldsa65_patch_mode_patches_der() {
             wire_server_hello_handshake: &server_hello,
         },
     })
-    .expect("ML-DSA patch");
+        .expect("ML-DSA patch");
 
     assert_eq!(
         &cert[..MLDSA65_REALITY_CERT_EXTENSION_DER_OFFSET],
@@ -280,7 +282,7 @@ fn hmac_plus_mldsa65_patch_mode_patches_der() {
     let signature = crate::reality::Mldsa65Signature::from_bytes(
         cert[MLDSA65_REALITY_CERT_EXTENSION_DER_OFFSET..extension_end].to_vec(),
     )
-    .expect("patched signature bytes");
+        .expect("patched signature bytes");
     verify_reality_mldsa65_signature_for_test(&verify_key, &message, &signature)
         .expect("signature verifies");
 }
@@ -310,7 +312,7 @@ fn mldsa65_live_patch_error_does_not_fallback_to_hmac() {
             wire_server_hello_handshake: &server_hello,
         },
     })
-    .unwrap_err();
+        .unwrap_err();
 
     let err_text = err.to_string();
     assert_eq!(err.kind(), ErrorKind::InvalidData);
@@ -344,7 +346,7 @@ fn seed_patch_error_does_not_fallback_to_hmac_only() {
             wire_server_hello_handshake: &server_hello,
         },
     })
-    .unwrap_err();
+        .unwrap_err();
 
     assert_eq!(err.kind(), ErrorKind::InvalidData);
     assert_eq!(cert, original);
@@ -358,7 +360,7 @@ fn mldsa65_live_patch_does_not_fallback_to_hmac_when_placeholder_missing() {
         Some("example.com"),
         RealityEphemeralCertificateLayout::LegacyHmacOnly,
     )
-    .expect("legacy certificate");
+        .expect("legacy certificate");
     let original = cert.der.clone();
     let mut cert_der = original.clone();
     let public_key = cert.public_key_raw;
@@ -379,7 +381,7 @@ fn mldsa65_live_patch_does_not_fallback_to_hmac_when_placeholder_missing() {
             wire_server_hello_handshake: &server_hello,
         },
     })
-    .unwrap_err();
+        .unwrap_err();
 
     assert_eq!(err.kind(), ErrorKind::InvalidData);
     assert_eq!(cert_der, original);
@@ -393,7 +395,7 @@ fn no_seed_path_does_not_require_mldsa65_placeholder() {
         Some("example.com"),
         RealityEphemeralCertificateLayout::LegacyHmacOnly,
     )
-    .expect("legacy certificate");
+        .expect("legacy certificate");
     let mut cert_der = cert.der.clone();
     let public_key = cert.public_key_raw;
     let auth_key = [0x22; 32];
@@ -404,7 +406,7 @@ fn no_seed_path_does_not_require_mldsa65_placeholder() {
         auth_key: &auth_key,
         mode: RealityCertificatePatchMode::HmacOnly,
     })
-    .expect("HMAC-only patch works without ML-DSA placeholder");
+        .expect("HMAC-only patch works without ML-DSA placeholder");
 
     assert_ne!(cert_der, cert.der);
 }
@@ -426,7 +428,7 @@ fn mldsa65_patch_signs_wire_server_hello_not_observed_dest_template() {
         Some("example.com"),
         RealityEphemeralCertificateLayout::Mldsa65ExtensionPlaceholder,
     )
-    .expect("ML-DSA certificate");
+        .expect("ML-DSA certificate");
     let public_key = cert.public_key_raw;
     let auth_key = [0x33; 32];
 
@@ -449,7 +451,7 @@ fn mldsa65_patch_signs_wire_server_hello_not_observed_dest_template() {
         &client_hello_handshake,
         &wire_server_hello_handshake,
     )
-    .expect("patch mode");
+        .expect("patch mode");
     assert!(matches!(
         mode,
         RealityCertificatePatchMode::HmacPlusMldsa65 { .. }
@@ -462,7 +464,7 @@ fn mldsa65_patch_signs_wire_server_hello_not_observed_dest_template() {
         &client_hello_handshake,
         &wire_server_hello_handshake,
     )
-    .expect("sign");
+        .expect("sign");
     let wrong_signature = sign_reality_cert_extension(
         &seed,
         &public_key,
@@ -470,6 +472,6 @@ fn mldsa65_patch_signs_wire_server_hello_not_observed_dest_template() {
         &client_hello_handshake,
         &observed_dest_server_hello,
     )
-    .expect("sign observed");
+        .expect("sign observed");
     assert_ne!(signature, wrong_signature);
 }

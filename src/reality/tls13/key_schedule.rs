@@ -1,6 +1,7 @@
 use std::io::{Error, ErrorKind};
 
 use hkdf::Hkdf;
+use hmac::KeyInit;
 use hmac::{Hmac, Mac};
 use sha2::{Digest, Sha256, Sha384};
 use subtle::ConstantTimeEq;

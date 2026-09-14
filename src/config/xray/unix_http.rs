@@ -8,7 +8,7 @@ use std::os::unix::fs::FileTypeExt;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UnixStream;
 
-use crate::startup_log;
+use crate::eprintln_bootstrap;
 
 use super::load::{decode_http_config_response, redact_config_source};
 
@@ -82,11 +82,11 @@ pub fn is_remnawave_internal_config_path(path: &str) -> bool {
 
 pub async fn fetch_unix_http_config(source: &str) -> std::io::Result<String> {
     let (socket_spec, request_path) = split_unix_http_target(source)?;
-    startup_log::eprintln_bootstrap(format!(
+    eprintln_bootstrap!(
         "unix-http config fetch: socket={} path={}",
         socket_spec,
         redact_config_source(&request_path)
-    ));
+    );
 
     let mut stream = connect_unix_socket(&socket_spec).await.map_err(|err| {
         std::io::Error::new(

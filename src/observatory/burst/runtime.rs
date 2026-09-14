@@ -3,7 +3,6 @@ use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant};
 
-use rand::Rng;
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio::time::{self, sleep, MissedTickBehavior};
@@ -17,6 +16,7 @@ use crate::observatory::probe::{measure_delay_direct, measure_delay_tagged, Http
 use crate::outbound::runtime::OutboundConnectRuntime;
 use crate::routing::{HealthPingObservation, OutboundHealthObservation, OutboundHealthProvider};
 use crate::runtime::RuntimeOutboundManager;
+use rand::RngExt;
 
 pub trait ProbeDelaySource: Send + Sync {
     fn delay(&self, max: Duration, seed: u64) -> Duration;
@@ -32,8 +32,8 @@ impl ProbeDelaySource for RandomProbeDelaySource {
         if max.is_zero() {
             return Duration::ZERO;
         }
-        let mut rng = rand::thread_rng();
-        Duration::from_nanos(rng.gen_range(0..=max.as_nanos()) as u64)
+        let mut rng = rand::rng();
+        Duration::from_nanos(rng.random_range(0..=max.as_nanos()) as u64)
     }
 }
 
@@ -207,7 +207,7 @@ impl RuntimeBurstObservatory {
                 RoundKind::Scheduled,
                 generation,
             )
-            .await;
+                .await;
             this.cleanup(&tags);
         });
         *self.scheduled_round_handle.lock().await = Some(handle);
@@ -267,7 +267,7 @@ impl RuntimeBurstObservatory {
                         Arc::clone(&this.outbound),
                         Arc::clone(&this.connect_runtime),
                     )
-                    .await
+                        .await
                     {
                         Ok(delay) => ProbeOutcome::Success(delay),
                         Err(_) if !this.check_connectivity(&ping, &options).await => {

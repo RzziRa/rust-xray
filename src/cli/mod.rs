@@ -71,30 +71,26 @@ impl std::fmt::Display for CliError {
 impl std::error::Error for CliError {}
 
 /// Parse process arguments (including `argv[0]` program name).
-pub fn parse_args<I, S>(args: I) -> Result<Command, CliError>
-where
-    I: IntoIterator<Item = S>,
-    S: AsRef<str>,
-{
-    let mut argv: Vec<String> = args.into_iter().map(|s| s.as_ref().to_string()).collect();
+pub fn parse_args(argv: &[&str]) -> Result<Command, CliError> {
     if argv.is_empty() {
         return Err(CliError::new("missing program name"));
     }
-    argv.remove(0);
+
+    let argv = &argv[1..];
 
     if argv.is_empty() {
         return Ok(Command::Run(default_run_options()));
     }
 
     if argv[0].starts_with('-') {
-        if argv.iter().any(|a| a == "-version" || a == "--version") {
+        if argv.iter().any(|&a| a == "-version" || a == "--version") {
             return Ok(Command::Version);
         }
         let opts = parse_run_config_flags(&argv)?;
         return Ok(Command::Run(opts));
     }
 
-    match argv[0].as_str() {
+    match argv[0] {
         "run" => {
             let opts = parse_run_config_flags(&argv[1..])?;
             Ok(Command::Run(opts))
@@ -103,7 +99,7 @@ where
         "api" => parse_api_command(&argv[1..]),
         "help" | "-h" | "--help" => Err(CliError::new(usage_text())),
         cmd if is_legacy_config_invocation(cmd) => Ok(Command::Run(RunOptions {
-            config: argv[0].clone(),
+            config: argv[0].to_string(),
             format: None,
         })),
         other => Err(CliError::new(format!("unknown command: {other}"))),
@@ -125,12 +121,12 @@ fn default_run_options() -> RunOptions {
     }
 }
 
-fn parse_run_config_flags(args: &[String]) -> Result<RunOptions, CliError> {
+fn parse_run_config_flags(args: &[&str]) -> Result<RunOptions, CliError> {
     let mut config: Option<String> = None;
     let mut format: Option<String> = None;
     let mut i = 0;
     while i < args.len() {
-        let arg = &args[i];
+        let arg = args[i];
         if arg == "-version" || arg == "--version" {
             return Err(CliError::new(
                 "use `version` subcommand instead of -version flag with run",
@@ -153,7 +149,7 @@ fn parse_run_config_flags(args: &[String]) -> Result<RunOptions, CliError> {
             continue;
         }
         if config.is_none() && looks_like_config_source(arg) {
-            config = Some(arg.clone());
+            config = Some(arg.to_string())
         }
         i += 1;
     }
@@ -182,19 +178,19 @@ fn validate_run_format(format: Option<&str>) -> Result<(), CliError> {
 fn looks_like_config_source(arg: &str) -> bool {
     !arg.starts_with('-')
         && (arg.starts_with("http+unix://")
-            || arg.starts_with('@')
-            || arg.contains(":/")
-            || arg.ends_with(".json")
-            || Path::new(arg).exists())
+        || arg.starts_with('@')
+        || arg.contains(":/")
+        || arg.ends_with(".json")
+        || Path::new(arg).exists())
 }
 
-fn parse_api_command(args: &[String]) -> Result<Command, CliError> {
+fn parse_api_command(args: &[&str]) -> Result<Command, CliError> {
     if args.is_empty() {
         return Err(CliError::new(
             "api subcommand required (e.g. stats, statsquery)",
         ));
     }
-    match args[0].as_str() {
+    match args[0] {
         "statsquery" => {
             let opts = parse_stats_api_options(&args[1..])?;
             Ok(Command::Api(ApiCommand::StatsQuery(opts)))
@@ -209,11 +205,11 @@ fn parse_api_command(args: &[String]) -> Result<Command, CliError> {
     }
 }
 
-fn parse_stats_api_options(args: &[String]) -> Result<StatsApiOptions, CliError> {
+fn parse_stats_api_options(args: &[&str]) -> Result<StatsApiOptions, CliError> {
     let mut opts = StatsApiOptions::default();
     let mut i = 0;
     while i < args.len() {
-        let arg = &args[i];
+        let arg = args[i];
         if matches_flag(arg, "server") || arg == "-s" {
             opts.server = take_flag_value(args, &mut i, "server")?.to_string();
         } else if matches_flag(arg, "timeout") || arg == "-t" {
@@ -243,7 +239,7 @@ fn matches_flag(arg: &str, long: &str) -> bool {
 }
 
 fn take_flag_value<'a>(
-    args: &'a [String],
+    args: &'a [&str],
     index: &mut usize,
     long: &str,
 ) -> Result<&'a str, CliError> {
@@ -258,7 +254,7 @@ fn take_flag_value<'a>(
     if *index >= args.len() {
         return Err(CliError::new(format!("missing value for -{long}")));
     }
-    Ok(args[*index].as_str())
+    Ok(args[*index])
 }
 
 /// Single-line Xray-compatible version string (Remnawave entrypoint uses `version | head -n 1`).

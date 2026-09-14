@@ -16,7 +16,6 @@ pub struct LogConfig {
     pub error: Option<String>,
     #[serde(rename = "dnsLog", default)]
     pub dns_log: bool,
-
     #[serde(flatten)]
     pub extra: BTreeMap<String, Value>,
 }

@@ -10,6 +10,7 @@ use tokio_stream::Stream;
 use tracing::{info, warn};
 
 use crate::api::server::ApiTransportMode;
+use crate::eprintln_bootstrap;
 use tonic::Request;
 
 const HTTP2_PREFACE: &[u8] = b"PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n";
@@ -95,9 +96,9 @@ pub fn log_api_wire_hint(peer: SocketAddr, hint: &ApiWireHint, transport: &ApiTr
                 api_transport = "plaintext",
                 "API received TLS ClientHello on plaintext gRPC listener; client is using TLS against plaintext API"
             );
-            crate::startup_log::eprintln_bootstrap(format!(
+            eprintln_bootstrap!(
                 "API wire hint from {peer}: TLS ClientHello on plaintext listener (Remna/XTLS-SDK TLS/plaintext mismatch)"
-            ));
+            );
         }
         (ApiWireHint::TlsClientHello, ApiTransportMode::Tls { .. })
         | (ApiWireHint::TlsClientHello, ApiTransportMode::Mtls { .. }) => {
@@ -127,7 +128,7 @@ pub fn rpc_remote_addr<T>(request: &Request<T>) -> String {
 
 pub fn log_rpc_call(service: &str, method: &str, remote: &str) {
     info!(service, method, %remote, "Xray API gRPC call");
-    crate::startup_log::eprintln_bootstrap(format!("{service}.{method} called from {remote}"));
+    eprintln_bootstrap!("{service}.{method} called from {remote}");
 }
 
 pub fn log_rpc_ok(service: &str, method: &str, remote: &str, detail: &str) {

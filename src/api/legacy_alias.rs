@@ -6,10 +6,12 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 use http::{Request, Response, Uri};
-use tonic::body::BoxBody;
+
 use tonic::codegen::Body;
 use tonic::codegen::Service;
 use tonic::server::NamedService;
+
+//pub type BoxBody = http_body_util::combinators::BoxBody<bytes::Bytes, tonic::Status>;
 
 pub const CANONICAL_HANDLER_SERVICE: &str = "xray.app.proxyman.command.HandlerService";
 pub const LEGACY_HANDLER_SERVICE: &str = "v2ray.core.app.proxyman.command.HandlerService";
@@ -97,14 +99,11 @@ legacy_alias_type!(
 
 impl<S, B> Service<Request<B>> for LegacyAliasService<S>
 where
-    S: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible>
-        + Clone
-        + Send
-        + 'static,
+    S: Service<Request<B>, Response = Response<B>, Error = Infallible> + Clone + Send + 'static,
     S::Future: Send + 'static,
     B: Body + Send + 'static,
 {
-    type Response = Response<BoxBody>;
+    type Response = Response<B>;
     type Error = Infallible;
     type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
 
@@ -129,14 +128,14 @@ macro_rules! legacy_alias_service_impl {
     ($alias:ident) => {
         impl<S, B> Service<Request<B>> for $alias<S>
         where
-            S: Service<Request<B>, Response = Response<BoxBody>, Error = Infallible>
+            S: Service<Request<B>, Response = Response<B>, Error = Infallible>
                 + Clone
                 + Send
                 + 'static,
             S::Future: Send + 'static,
             B: Body + Send + 'static,
         {
-            type Response = Response<BoxBody>;
+            type Response = Response<B>;
             type Error = Infallible;
             type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
 

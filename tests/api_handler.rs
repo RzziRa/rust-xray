@@ -24,7 +24,7 @@ use tonic::Code;
 
 const INBOUND_TAG: &str = "vless-reality-in";
 const STATIC_ID: &str = "11111111-1111-1111-1111-111111111111";
-const DYNAMIC_ID: &str = "22222222-2222-2222-2222-222222222222";
+const DYNAMIC_ID: &str = "22222222-2222-0000-2222-222222222222";
 
 fn test_stats_state(registry: Arc<StatsRegistry>) -> StatsState {
     let config: XrayConfig =
@@ -61,7 +61,7 @@ async fn spawn_handler_server_with(
             handler_runtime,
             ApiTransportMode::Plaintext,
         )
-        .await;
+            .await;
     });
     tokio::time::sleep(std::time::Duration::from_millis(30)).await;
     addr
@@ -512,11 +512,13 @@ async fn vless_tcp_auth_result(
     let relay = tokio::spawn(async move {
         handle_vless_tcp_inbound(server_io, manager.as_ref(), None, None, None).await
     });
+
     tokio::spawn(async move {
         let mut buf = [0u8; 4096];
         let _ = client_io.read(&mut buf).await;
         let _ = client_io.shutdown().await;
     });
+
     tokio::time::timeout(std::time::Duration::from_secs(3), relay)
         .await
         .map_err(|_| std::io::Error::new(std::io::ErrorKind::TimedOut, "relay timeout"))?
@@ -554,10 +556,11 @@ async fn add_user_via_wire_enables_immediate_vless_tcp_auth() {
 
 #[tokio::test]
 async fn remove_user_via_wire_disables_new_vless_tcp_auth() {
+    let id = uuid::Uuid::parse_str(DYNAMIC_ID).unwrap();
     let manager = Arc::new(VlessUserManager::new(INBOUND_TAG, vec![]));
     manager
         .add_user(rust_xray::vless::user_manager::ManagedUser {
-            id: uuid::Uuid::parse_str(DYNAMIC_ID).unwrap(),
+            id,
             email: "dynamic@example.test".to_string(),
             flow: None,
             level: None,
@@ -566,8 +569,7 @@ async fn remove_user_via_wire_disables_new_vless_tcp_auth() {
         })
         .expect("seed");
 
-    let dynamic_uuid = uuid::Uuid::parse_str(DYNAMIC_ID).unwrap();
-    assert!(vless_tcp_auth_succeeds(Arc::clone(&manager), dynamic_uuid).await);
+    assert!(vless_tcp_auth_succeeds(Arc::clone(&manager), id).await);
 
     let registry = Arc::new(StatsRegistry::new());
     let addr = spawn_handler_server(Arc::clone(&manager), registry).await;
@@ -584,7 +586,7 @@ async fn remove_user_via_wire_disables_new_vless_tcp_auth() {
         .expect("remove user");
 
     assert!(
-        !vless_tcp_auth_succeeds(Arc::clone(&manager), dynamic_uuid).await,
+        !vless_tcp_auth_succeeds(Arc::clone(&manager), id).await,
         "new auth must fail after RemoveUser"
     );
 }
@@ -742,7 +744,7 @@ async fn remove_static_user_via_api() {
             Arc::clone(&manager),
             uuid::Uuid::parse_str(STATIC_ID).unwrap(),
         )
-        .await
+            .await
     );
 }
 
@@ -797,14 +799,14 @@ async fn tag_isolation_remove_does_not_affect_other_inbound() {
             Arc::clone(&manager_a),
             uuid::Uuid::parse_str(STATIC_ID).unwrap(),
         )
-        .await
+            .await
     );
     assert!(
         vless_tcp_auth_succeeds(
             Arc::clone(&manager_b),
             uuid::Uuid::parse_str(DYNAMIC_ID).unwrap(),
         )
-        .await
+            .await
     );
 }
 
@@ -830,7 +832,7 @@ async fn dynamic_user_level_applies_stats_online_policy() {
             "inbounds": []
         }"#,
     )
-    .expect("parse");
+        .expect("parse");
     let stats_state = StatsState::from_xray_config(&config, Some(INBOUND_TAG.to_string()));
     let registry = Arc::clone(&stats_state.registry);
 
@@ -851,7 +853,7 @@ async fn dynamic_user_level_applies_stats_online_policy() {
             handler_runtime,
             ApiTransportMode::Plaintext,
         )
-        .await;
+            .await;
     });
     tokio::time::sleep(std::time::Duration::from_millis(30)).await;
 
@@ -928,7 +930,7 @@ async fn remove_user_while_connected_preserves_online_until_session_end() {
             handler_runtime,
             ApiTransportMode::Plaintext,
         )
-        .await;
+            .await;
     });
     tokio::time::sleep(std::time::Duration::from_millis(30)).await;
 
@@ -983,7 +985,7 @@ async fn remove_user_while_connected_preserves_online_until_session_end() {
             Arc::clone(&manager),
             uuid::Uuid::parse_str(DYNAMIC_ID).unwrap(),
         )
-        .await
+            .await
     );
 
     drop(guard);
@@ -1062,7 +1064,7 @@ async fn dynamic_user_authenticates_over_xhttp_production_path() {
             Some(IpAddr::V4(Ipv4Addr::new(203, 0, 113, 10))),
             None,
         )
-        .await
+            .await
     });
     client_io.write_all(&request_bytes).await.expect("write");
     let mut header = [0u8; 2];
@@ -1070,9 +1072,9 @@ async fn dynamic_user_authenticates_over_xhttp_production_path() {
         std::time::Duration::from_secs(3),
         client_io.read_exact(&mut header),
     )
-    .await
-    .expect("xhttp response timeout")
-    .expect("xhttp response header");
+        .await
+        .expect("xhttp response timeout")
+        .expect("xhttp response header");
     client_io.shutdown().await.ok();
     bridge.await.expect("join").expect("xhttp bridge ok");
 }

@@ -35,6 +35,7 @@ use crate::config::{
     extract_api_inbound_tls_material, is_localhost_api_listen,
     is_remnawave_http_unix_config_source, ApiTlsMaterial, XrayConfig,
 };
+use crate::eprintln_bootstrap;
 use crate::runtime::HandlerRuntime;
 use crate::stats::StatsRegistry;
 
@@ -357,10 +358,10 @@ pub fn log_api_transport_selected(selection: &ApiTransportSelection) {
         transport_reason = selection.reason,
         "Xray API transport selected: {label}"
     );
-    crate::startup_log::eprintln_bootstrap(format!(
+    eprintln_bootstrap!(
         "Xray API transport selected: {label} reason={}",
         selection.reason
-    ));
+    );
 }
 
 /// Resolve API transport from environment only (no Remnawave config context).
@@ -370,7 +371,7 @@ pub fn api_transport_mode_from_env() -> std::io::Result<ApiTransportMode> {
         api_listen: None,
         xray: None,
     })?
-    .mode)
+        .mode)
 }
 
 fn api_service_canonical_path(service: ApiService) -> &'static str {
@@ -418,9 +419,9 @@ pub fn log_api_listener_ready(
         api_mounted_services = %mounted,
         "Xray API enabled services"
     );
-    crate::startup_log::eprintln_bootstrap(format!(
+    eprintln_bootstrap!(
         "API owns {bound_addr} for {transport_label} gRPC ({mounted})"
-    ));
+    );
 }
 
 /// Parse `api.services` into mountable services (unknown entries are ignored).
@@ -631,7 +632,7 @@ pub async fn serve_grpc_incoming<I, IO>(
     transport: ApiTransportMode,
 ) -> std::io::Result<()>
 where
-    I: Stream<Item = Result<IO, std::io::Error>> + Send + Unpin + 'static,
+    I: Stream<Item=Result<IO, std::io::Error>> + Send + Unpin + 'static,
     IO: tokio::io::AsyncRead + tokio::io::AsyncWrite + Connected + Unpin + Send + 'static,
 {
     let mut server_builder = Server::builder();
@@ -676,8 +677,8 @@ pub async fn serve_grpc_on(
         handler_runtime,
         transport,
     )
-    .await
-    .map_err(|err| std::io::Error::other(format!("Xray API server on {local_addr} stopped: {err}")))
+        .await
+        .map_err(|err| std::io::Error::other(format!("Xray API server on {local_addr} stopped: {err}")))
 }
 
 #[cfg(unix)]
@@ -702,7 +703,7 @@ pub async fn serve_grpc_on_unix(
         handler_runtime,
         transport,
     )
-    .await
+        .await
 }
 
 /// Result of starting the configured Xray API Commander.
@@ -847,9 +848,9 @@ pub fn log_api_internal_commander_ready(
         api_mounted_services = %mounted,
         "Xray API enabled services"
     );
-    crate::startup_log::eprintln_bootstrap(format!(
+    eprintln_bootstrap!(
         "API internal Commander outbound tag={api_tag} plaintext gRPC ({mounted})"
-    ));
+    );
     let _ = mode;
 }
 
@@ -869,7 +870,7 @@ pub async fn serve_grpc(
         handler_runtime,
         transport,
     )
-    .await
+        .await
 }
 
 #[cfg(test)]

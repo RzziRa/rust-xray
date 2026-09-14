@@ -35,7 +35,7 @@ pub struct OsHandshakeRng;
 
 impl HandshakeRng for OsHandshakeRng {
     fn fill(&mut self, buf: &mut [u8]) {
-        getrandom::getrandom(buf).expect("OS RNG");
+        getrandom::fill(buf).expect("OS RNG");
     }
 
     fn gen_u32(&mut self) -> u32 {
@@ -131,8 +131,8 @@ impl VlessEncryptionServer {
             TokioDuration::from_secs(handshake_timeout.as_secs()),
             self.handshake_inner(stream, rng),
         )
-        .await
-        .map_err(|_| HandshakeError::Timeout)?
+            .await
+            .map_err(|_| HandshakeError::Timeout)?
     }
 
     async fn handshake_inner<S, R>(
@@ -168,7 +168,7 @@ impl VlessEncryptionServer {
             &enc_len,
             &[],
         )
-        .map_err(map_crypto_err)?;
+            .map_err(map_crypto_err)?;
         let plaintext_len = u16::from_be_bytes([plaintext_len[0], plaintext_len[1]]);
 
         if plaintext_len == ZERO_RTT_LENGTH {

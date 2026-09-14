@@ -428,6 +428,7 @@ fn parse_log_runtime_config_maps_access_and_error_files() {
         loglevel: Some("warning".to_string()),
         extra: Default::default(),
     };
+
     let runtime = parse_log_runtime_config(Some(&config));
     assert_eq!(runtime.error.kind, LogOutputKind::File);
     assert_eq!(runtime.access.kind, LogOutputKind::File);

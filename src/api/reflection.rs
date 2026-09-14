@@ -2,7 +2,7 @@
 
 use prost::Message;
 use prost_types::FileDescriptorSet;
-use tonic_reflection::server::Builder;
+use tonic_reflection::server::{v1, v1alpha, Builder, Error};
 
 use crate::api::legacy_alias::{
     CANONICAL_HANDLER_SERVICE, CANONICAL_LOGGER_SERVICE, CANONICAL_OBSERVATORY_SERVICE,
@@ -27,24 +27,14 @@ fn reflection_builder(enabled: &[ApiService]) -> Builder<'_> {
 /// Build reflection v1 with canonical descriptor symbols and explicit service listing.
 pub fn build_api_reflection_v1(
     enabled: &[ApiService],
-) -> Result<
-    tonic_reflection::server::v1::ServerReflectionServer<
-        impl tonic_reflection::server::v1::ServerReflection,
-    >,
-    tonic_reflection::server::Error,
-> {
+) -> Result<v1::ServerReflectionServer<impl v1::ServerReflection + '_>, Error> {
     reflection_builder(enabled).build_v1()
 }
 
 /// Build reflection v1alpha with the same service list as v1 (grpc-go `reflection.Register` parity).
 pub fn build_api_reflection_v1alpha(
     enabled: &[ApiService],
-) -> Result<
-    tonic_reflection::server::v1alpha::ServerReflectionServer<
-        impl tonic_reflection::server::v1alpha::ServerReflection,
-    >,
-    tonic_reflection::server::Error,
-> {
+) -> Result<v1alpha::ServerReflectionServer<impl v1alpha::ServerReflection + '_>, Error> {
     reflection_builder(enabled).build_v1alpha()
 }
 

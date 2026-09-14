@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use rcgen::{BasicConstraints, CertificateParams, DnType, IsCa, KeyPair};
+use rcgen::{BasicConstraints, CertificateParams, DnType, IsCa, Issuer, KeyPair};
 use rustls::pki_types::{CertificateDer, PrivateKeyDer};
 use rustls::server::ServerConnection;
 use rustls::{RootCertStore, ServerConfig};
@@ -23,8 +23,8 @@ const MOCK_SNI: &str = "ccs-probe.test.local";
 
 struct MockProbeCa {
     roots: RootCertStore,
-    ca_cert: rcgen::Certificate,
     ca_key: KeyPair,
+    ca_params: CertificateParams,
 }
 
 impl MockProbeCa {
@@ -44,9 +44,13 @@ impl MockProbeCa {
             .expect("add mock root");
         Self {
             roots,
-            ca_cert,
             ca_key,
+            ca_params,
         }
+    }
+
+    fn ca_issuer(&self) -> Issuer<'_, &'_ KeyPair> {
+        Issuer::from_params(&self.ca_params, &self.ca_key)
     }
 
     fn server_config(&self, alpn: Option<Vec<Vec<u8>>>) -> Arc<ServerConfig> {
@@ -54,8 +58,9 @@ impl MockProbeCa {
         let server_key = KeyPair::generate().expect("mock server key");
         let server_params =
             CertificateParams::new(vec![MOCK_SNI.to_string()]).expect("server params");
+
         let server_cert = server_params
-            .signed_by(&server_key, &self.ca_cert, &self.ca_key)
+            .signed_by(&server_key, &self.ca_issuer())
             .expect("signed server cert");
         let cert_chain = vec![CertificateDer::from(server_cert.der().to_vec())];
         let key = PrivateKeyDer::Pkcs8(server_key.serialize_der().into());

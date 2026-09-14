@@ -1,5 +1,7 @@
 use super::*;
 
+use hmac::KeyInit;
+
 const TEST_PRIVATE_KEY: &str = "CMZoLYnNxeaUoLn7LwK4RzBIdpzBXI5TOIlZ3tEfOn4";
 const VALID_SEED_B64: &str = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8";
 const SEED_31_BYTES_B64: &str = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHg";
@@ -40,7 +42,7 @@ fn mldsa65_stub_does_not_mutate_cert_der() {
         &client_hello,
         &server_hello,
     )
-    .unwrap_err();
+        .unwrap_err();
 
     assert_eq!(err.kind(), std::io::ErrorKind::Unsupported);
     assert_eq!(cert_after, cert_before);

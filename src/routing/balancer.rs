@@ -320,7 +320,7 @@ fn first_number(value: &str) -> Option<f32> {
 
 fn random_index(len: usize) -> usize {
     let mut bytes = [0u8; 8];
-    let _ = getrandom::getrandom(&mut bytes);
+    let _ = getrandom::fill(&mut bytes);
     u64::from_le_bytes(bytes) as usize % len
 }
 

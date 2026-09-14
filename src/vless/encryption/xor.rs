@@ -14,7 +14,7 @@ pub struct CtrStream {
 impl CtrStream {
     pub fn new(united_key: &[u8], iv: &[u8; 16]) -> Self {
         let key = derive_ctr_key(united_key);
-        let cipher = Aes256Ctr::new(key.as_slice().into(), iv.as_slice().into());
+        let cipher = Aes256Ctr::new(&key.into(), iv.into());
         Self { cipher }
     }
 

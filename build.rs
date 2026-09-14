@@ -26,7 +26,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "transport/internet/splithttp/config.proto",
     ];
 
-    let mut config = tonic_build::configure()
+    let mut config = tonic_prost_build::configure()
         .build_server(true)
         .build_client(true);
 
@@ -38,7 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .iter()
             .map(|p| format!("{proto_root}/{p}"))
             .collect::<Vec<_>>(),
-        &[proto_root],
+        &[proto_root.to_string()],
     )?;
 
     println!("cargo:rerun-if-changed={proto_root}");
