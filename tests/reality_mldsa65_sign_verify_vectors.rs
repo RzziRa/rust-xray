@@ -54,7 +54,6 @@ fn is_placeholder_fixture(fixture: &Mldsa65VectorFixture) -> bool {
         || fixture.verify_b64url.contains("PLACEHOLDER")
 }
 
-#[allow(clippy::chunks_exact_to_as_chunks)]
 fn decode_hex(value: &str) -> std::io::Result<Vec<u8>> {
     if !value.len().is_multiple_of(2) {
         return Err(std::io::Error::new(
@@ -65,7 +64,9 @@ fn decode_hex(value: &str) -> std::io::Result<Vec<u8>> {
 
     value
         .as_bytes()
-        .chunks_exact(2)
+        .as_chunks::<2>()
+        .0
+        .iter()
         .map(|pair| {
             let s = std::str::from_utf8(pair).map_err(|err| {
                 std::io::Error::new(
