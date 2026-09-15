@@ -9,7 +9,7 @@ use std::process::ExitCode;
 
 #[derive(Parser, Debug)]
 struct CliArgs {
-    #[clap(long, short = 'd', value_parser = parse_dir)]
+    #[clap(required = true, value_parser = parse_dir)]
     fixture_dir: PathBuf,
     #[clap(long, short = 'w')]
     write_expected: bool,
@@ -70,11 +70,11 @@ fn main() -> ExitCode {
 
     match decode_reality_fixture_client_hello(&client_hello, &private_key) {
         Ok(RealityFixtureSessionResult::Opened {
-               sni,
-               client_version,
-               unix_time,
-               short_id_hex,
-           }) => {
+            sni,
+            client_version,
+            unix_time,
+            short_id_hex,
+        }) => {
             println!("REALITY fixture decode OK");
             match &sni {
                 Some(hostname) => println!("sni={hostname}"),
@@ -124,7 +124,13 @@ mod tests {
     use super::*;
     #[test]
     fn cli() {
-        let args = CliArgs::parse_from(["decode_reality_fixture", "--fixture-dir", "tests/fixtures/reality/basic-xray", "--force", "--write-expected"]);
+        let args = CliArgs::parse_from([
+            "decode_reality_fixture",
+            "--fixture-dir",
+            "tests/fixtures/reality/basic-xray",
+            "--force",
+            "--write-expected",
+        ]);
         assert!(args.fixture_dir.is_dir());
         assert!(args.write_expected);
         assert!(args.force);
